@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="VERALINK connects global talent with paid AI training, voice, transcription, translation and data annotation projects." />
+    <meta name="theme-color" content="#1B263B" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>VERALINK — Connect Talent. Power AI.</title>
+    <script>
+      // Apply saved theme and language before first paint (no flash). Mirrors lib/theme.js and i18n/index.js.
+      (function () {
+        var d = document.documentElement, theme = 'system', lang = null;
+        try { theme = localStorage.getItem('veralink.theme') || 'system'; lang = localStorage.getItem('veralink.lang'); } catch (e) {}
+        if (theme === 'system') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        d.dataset.theme = theme;
+        if (!lang) lang = (navigator.language || '').toLowerCase().indexOf('ar') === 0 ? 'ar' : 'en';
+        d.lang = lang; d.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,152 @@
+/* VERALINK design tokens — single source of truth for color, type, space, radius, elevation. */
+:root {
+  /* Brand palette */
+  --navy: #1b263b;
+  --navy-900: #131b2a;
+  --navy-800: #1b263b;
+  --navy-700: #243149;
+  --steel: #415a77;
+  --steel-600: #3a5069;
+  --blue-gray: #778da9;
+  --soft-gray: #e0e1dd;
+  --sand: #ddbea9;
+  --sand-100: #f6ece5;
+  --white: #ffffff;
+
+  /* Neutrals derived from the palette */
+  --bg: #ffffff;
+  --bg-subtle: #f6f7f5;
+  --bg-muted: #eef0ec;
+  --border: #e0e1dd;
+  --border-strong: #c9ccc5;
+  --text: #1b263b;
+  --text-muted: #4a5a70;   /* 7.1:1 on white */
+  --text-subtle: #5f6f84;  /* 5.3:1 on white */
+  --link: #415a77;
+
+  /* Theme-aware roles (redefined for dark mode below) */
+  --surface: #ffffff;          /* cards, inputs, menus, dialogs */
+  --heading: #1b263b;          /* headings and strong text */
+  --primary: #1b263b;          /* primary buttons, selected states */
+  --primary-hover: #243149;
+  --on-primary: #ffffff;
+  --header-bg: rgba(255, 255, 255, 0.94);
+  --hover-row: #fafbf9;
+  --unread-bg: #fbf8f5;
+  --sand-fg: #7a4e33;          /* text on sand-100 */
+  --review-bg: #ece9f5;
+  --review-fg: #4b4380;
+  --alert-info-border: #d3dce7;
+  --alert-success-fg: #204d37; --alert-success-border: #cde3d6;
+  --alert-warning-fg: #6b4510; --alert-warning-border: #f0dcb9;
+  --alert-danger-fg: #7a2a2a;  --alert-danger-border: #efcfcd;
+  --alert-sand-fg: #5e3d27;    --alert-sand-border: #ecd8ca;
+  --danger-border: #e4c3c1;
+  color-scheme: light;
+
+  /* Semantic */
+  --success: #2f6f4f;
+  --success-bg: #e7f2ec;
+  --warning: #8a5a12;
+  --warning-bg: #fbf1e1;
+  --danger: #a33a3a;
+  --danger-bg: #f9e9e8;
+  --info: #415a77;
+  --info-bg: #e9eef4;
+
+  /* Type */
+  --font: 'Inter', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
+  --fs-3xl: 2.25rem;
+  --fs-4xl: 3.25rem;
+
+  /* Spacing — 4px base */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+
+  /* Radius */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-full: 999px;
+
+  /* Elevation — restrained */
+  --shadow-sm: 0 1px 2px rgba(27, 38, 59, 0.06);
+  --shadow-md: 0 4px 14px rgba(27, 38, 59, 0.07), 0 1px 3px rgba(27, 38, 59, 0.05);
+  --shadow-lg: 0 18px 48px rgba(27, 38, 59, 0.16);
+
+  --focus: 0 0 0 3px rgba(65, 90, 119, 0.35);
+  --container: 1200px;
+  --header-h: 68px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Arabic: a typeface designed for Arabic script first, Latin second. */
+:root[lang='ar'] {
+  --font: 'IBM Plex Sans Arabic', 'Inter', system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
+}
+
+/* ---------- Dark theme ---------- */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1520;
+  --bg-subtle: #141c2a;
+  --bg-muted: #1d2738;
+  --surface: #172030;
+  --border: #283447;
+  --border-strong: #3a475c;
+  --text: #dfe4ec;
+  --text-muted: #b3bdcc;
+  --text-subtle: #8f9bb0;
+  --heading: #f1f4f8;
+  --link: #a9c0dc;
+  --steel: #8ea7c6;
+  --steel-600: #a3b8d3;
+  --soft-gray: #3a475c;
+
+  --primary: #dbe3ee;
+  --primary-hover: #c3cfdf;
+  --on-primary: #131b2a;
+  --header-bg: rgba(15, 21, 32, 0.9);
+  --hover-row: #1a2333;
+  --unread-bg: #1d2230;
+
+  --success: #7fcca3;
+  --success-bg: #15281f;
+  --warning: #e6b56a;
+  --warning-bg: #2b2215;
+  --danger: #f09a9a;
+  --danger-bg: #301a1c;
+  --info: #8ea7c6;
+  --info-bg: #1b2738;
+  --sand-100: #2c241e;
+  --sand-fg: #e8c9b3;
+  --review-bg: #241f38;
+  --review-fg: #b9b0ea;
+  --alert-info-border: #2b3b52;
+  --alert-success-fg: #a9dcc0; --alert-success-border: #24402f;
+  --alert-warning-fg: #f0cf98; --alert-warning-border: #4a3a1f;
+  --alert-danger-fg: #f6b7b7;  --alert-danger-border: #4d2a2d;
+  --alert-sand-fg: #ecd3c1;    --alert-sand-border: #4a3b30;
+  --danger-border: #5a3033;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.5);
+  --focus: 0 0 0 3px rgba(142, 167, 198, 0.45);
+}
