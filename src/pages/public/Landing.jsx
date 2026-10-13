@@ -134,8 +134,8 @@ export default function Landing() {
             <p>{t('Six kinds of projects, each with its own tools, requirements and skill levels.')}</p>
           </div>
           <div className="cat-grid">
-            {CATEGORIES.map((c, i) => (
-              <article className={`cat-card ${i === 0 ? 'cat-feature' : ''}`} key={c.id}>
+            {CATEGORIES.map((c) => (
+              <article className="cat-card" key={c.id}>
                 <span className="cat-icon">
                   <Icon name={c.icon} />
                 </span>
