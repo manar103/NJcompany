@@ -7,6 +7,7 @@
 import { store, uid, today } from './store';
 import { STATUS_META, categoryById } from '../data/constants';
 import { t } from '../i18n';
+import { withJobDefaults } from '../data/jobs';
 
 const LATENCY = 450;
 const wait = (ms = LATENCY) => new Promise((r) => setTimeout(r, ms));
@@ -110,7 +111,7 @@ export const jobs = {
   async save(job) {
     return write((s) => {
       const exists = s.jobs.some((j) => j.id === job.id);
-      const next = exists ? s.jobs.map((j) => (j.id === job.id ? { ...j, ...job } : j)) : [{ ...job, id: `vl-${Math.floor(200 + Math.random() * 700)}`, postedAt: today() }, ...s.jobs];
+      const next = exists ? s.jobs.map((j) => (j.id === job.id ? withJobDefaults({ ...j, ...job }) : j)) : [withJobDefaults({ ...job, id: uid('vl'), postedAt: today() }), ...s.jobs];
       return { state: { ...s, jobs: next }, result: true };
     });
   },

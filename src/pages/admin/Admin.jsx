@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import { useDocumentTitle, useStore } from '../../lib/hooks';
 import { admin as adminApi, jobs as jobsApi } from '../../services/api';
 import { store } from '../../services/store';
-import { ADMIN_CONTRIBUTORS } from '../../data/seed';
 import { ASSESSMENTS } from '../../data/jobs';
 import {
   APPLICATION_STATUSES, CATEGORIES, COMPENSATION_TYPES, EXPERIENCE, LANGUAGES, PROFICIENCY, REGIONS, STATUS_META, WORK_TYPES, categoryById, compensationLabel, experienceLabel,
@@ -12,7 +11,7 @@ import {
 import { fmtDate, relative } from '../../lib/format';
 import { PageHead } from '../../components/layout/AppShell';
 import { ApplicationTimeline } from '../app/Applications';
-import { Alert, Badge, Button, Checkbox, Dialog, EmptyState, Field, Icon, Input, Progress, SampleBadge, Select, StatusBadge, Tabs, Textarea, useToast } from '../../components/ui';
+import { Alert, Badge, Button, Checkbox, Dialog, EmptyState, Field, Icon, Input, Progress, Select, StatusBadge, Tabs, Textarea, useToast } from '../../components/ui';
 import { t } from '../../i18n';
 
 function useJobMap() {
@@ -43,7 +42,7 @@ export function AdminOverview() {
         {[
           { icon: 'briefcase', l: 'Open opportunities', v: openJobs.length },
           { icon: 'clipboard', l: 'Awaiting review', v: queue.length },
-          { icon: 'users', l: 'Contributors', v: users.filter((u) => u.role === 'contributor').length + ADMIN_CONTRIBUTORS.length },
+          { icon: 'users', l: 'Contributors', v: users.filter((u) => u.role === 'contributor').length },
           { icon: 'folder', l: 'Active projects', v: projects.filter((p) => p.status === 'active').length },
         ].map((s) => (
           <div className="stat card" key={s.l}>
@@ -356,7 +355,7 @@ export function AdminContributors() {
   const users = useStore((s) => s.users);
   const apps = useStore((s) => s.applications);
   const registered = users
-    .filter((u) => u.role === 'contributor' && u.id !== 'u-demo')
+    .filter((u) => u.role === 'contributor')
     .map((u) => ({
       id: u.id,
       name: u.profile?.fullName || u.email,
@@ -367,11 +366,10 @@ export function AdminContributors() {
       applications: apps.filter((a) => a.userId === u.id && a.status !== 'draft').length,
       status: 'active',
     }));
-  const all = [...registered, ...ADMIN_CONTRIBUTORS];
-  const rows = all.filter((c) => !q || (c.name + c.country + c.languages.join(' ')).toLowerCase().includes(q.toLowerCase()));
+  const rows = registered.filter((c) => !q || (c.name + c.country + c.languages.join(' ')).toLowerCase().includes(q.toLowerCase()));
   return (
     <>
-      <PageHead title={t('Contributors')} description={t('People who signed up, followed by sample contributors.')} />
+      <PageHead title={t('Contributors')} description={t('Everyone who has signed up as a contributor.')} />
       <div className="card">
         <div className="table-tools">
           <div className="input-group grow" style={{ maxWidth: 360 }}>
@@ -388,7 +386,7 @@ export function AdminContributors() {
                 <tr key={c.id}>
                   <td>
                     <div className="t-strong">{c.name}</div>
-                    {c.email ? <div className="xs subtle">{c.email}</div> : <SampleBadge />}
+                    <div className="xs subtle">{c.email}</div>
                   </td>
                   <td>{t(c.country)}</td>
                   <td>{c.languages.map((l) => t(l)).join(t(', ')) || '—'}</td>

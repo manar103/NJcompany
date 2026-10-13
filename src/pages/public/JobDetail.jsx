@@ -6,7 +6,7 @@ import { categoryById, compensationLabel, experienceLabel, proficiencyLabel, wor
 import { fmtDate } from '../../lib/format';
 import { DeadlineText } from '../../components/jobs/JobCard';
 import ApplyDialog from '../../components/jobs/ApplyDialog';
-import { Accordion, Alert, Badge, Button, ErrorState, Icon, SampleBadge, Skeleton, StatusBadge } from '../../components/ui';
+import { Accordion, Alert, Badge, Button, ErrorState, Icon, Skeleton, StatusBadge } from '../../components/ui';
 import { t } from '../../i18n';
 
 function Section({ title, icon, children }) {
@@ -124,7 +124,6 @@ export default function JobDetail({ id, inApp = false }) {
               <Icon name={cat.icon} />
             </span>
             <span className="job-cat">{cat.name}</span>
-            <SampleBadge>{t('Sample listing')}</SampleBadge>
           </div>
           <h1>{job.title}</h1>
           <p className="jd-summary">{job.summary}</p>

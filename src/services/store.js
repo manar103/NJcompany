@@ -1,19 +1,18 @@
-// Local prototype store. Everything here lives in this browser's localStorage only —
-// it stands in for a backend database and is replaced by real API calls in production.
-import { JOBS } from '../data/jobs';
-import { DEMO_USER, DEMO_ADMIN, DEMO_APPLICATIONS, DEMO_PROJECTS, DEMO_NOTIFICATIONS, ADMIN_EXTRA_APPLICATIONS } from '../data/seed';
+// Local store. Everything here lives in this browser's localStorage for now —
+// it stands in for the database and is replaced by real API calls once the backend exists.
+// The platform starts empty: admins create opportunities, contributors sign up through Clerk.
 import { localizeJob } from '../data/localize';
 import { getLang } from '../i18n';
 
-const KEY = 'veralink.prototype.v2';
+const KEY = 'veralink.data.v3';
 
 const initial = () => ({
-  users: [DEMO_USER, DEMO_ADMIN],
+  users: [],
   sessionUserId: null,
-  jobs: JOBS,
-  applications: [...DEMO_APPLICATIONS, ...ADMIN_EXTRA_APPLICATIONS],
-  projects: DEMO_PROJECTS,
-  notifications: DEMO_NOTIFICATIONS,
+  jobs: [],
+  applications: [],
+  projects: [],
+  notifications: [],
   drafts: {}, // assessment + workspace save-and-continue data, keyed by id
   announcements: [],
   prefs: {},

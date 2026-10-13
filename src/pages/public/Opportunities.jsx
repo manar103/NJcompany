@@ -4,7 +4,7 @@ import { useDocumentTitle, useQuery, useSession, useStore } from '../../lib/hook
 import { jobs as jobsApi, filterJobs } from '../../services/api';
 import JobCard from '../../components/jobs/JobCard';
 import FilterPanel, { EMPTY_FILTERS, FILTER_GROUPS, optionLabel } from '../../components/jobs/FilterPanel';
-import { Button, Drawer, EmptyState, ErrorState, Icon, IconButton, LoadingCards, SampleBadge, Select } from '../../components/ui';
+import { Button, Drawer, EmptyState, ErrorState, Icon, IconButton, LoadingCards, Select } from '../../components/ui';
 import { t, tn, tx } from '../../i18n';
 
 function initialFilters(query) {
@@ -84,7 +84,6 @@ export default function Opportunities({ inApp = false }) {
               <h2 id="results-heading" className="results-count" aria-live="polite">
                 {loading ? t('Loading opportunities…') : error ? t('Results unavailable') : tn(results.length, '{n} opportunity', '{n} opportunities')}
               </h2>
-              <SampleBadge />
             </div>
             <div className="row" style={{ gap: 8 }}>
               <label htmlFor="sort" className="small subtle">
@@ -114,6 +113,12 @@ export default function Opportunities({ inApp = false }) {
               <ErrorState title={t('We couldn’t load opportunities')} onRetry={reload}>
                 {error.message}
               </ErrorState>
+            </div>
+          ) : openJobs.length === 0 ? (
+            <div className="card">
+              <EmptyState icon="briefcase" title={t('No opportunities yet')}>
+                {t('New projects are published here soon. Create an account to be ready to apply.')}
+              </EmptyState>
             </div>
           ) : results.length === 0 ? (
             <div className="card">

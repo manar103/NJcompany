@@ -5,7 +5,7 @@ import { CATEGORIES } from '../../data/constants';
 import { LANDING_FAQ } from '../../data/jobs';
 import HeroVisual from '../../components/HeroVisual';
 import JobCard from '../../components/jobs/JobCard';
-import { Accordion, Button, Icon, SampleBadge, StatusBadge } from '../../components/ui';
+import { Accordion, Button, EmptyState, Icon, StatusBadge } from '../../components/ui';
 import { translated } from '../../i18n';
 import { t, tn, tx } from '../../i18n';
 
@@ -69,7 +69,9 @@ export default function Landing() {
   useDocumentTitle();
   const { query } = useLocation();
   const allJobs = useStore((s) => s.jobs);
-  const featured = allJobs.filter((j) => j.featured && j.status === 'open').slice(0, 4);
+  const open = allJobs.filter((j) => j.status === 'open');
+  // Featured listings first, then the newest, so the section fills as admins publish.
+  const featured = [...open].sort((x, y) => (y.featured ? 1 : 0) - (x.featured ? 1 : 0) || (y.postedAt || '').localeCompare(x.postedAt || '')).slice(0, 4);
   const counts = Object.fromEntries(CATEGORIES.map((c) => [c.id, allJobs.filter((j) => j.category === c.id && j.status === 'open').length]));
 
   // Section links from the header use ?s=<section-id>.
@@ -145,7 +147,7 @@ export default function Landing() {
                   <Link to={`/opportunities?category=${c.id}`} className="link-btn" aria-label={t('Explore {name} jobs', { name: c.name })}>
                     {t('Explore Jobs')} <Icon name="arrowRight" />
                   </Link>
-                  <span className="xs subtle">{t('{n} sample listings', { n: counts[c.id] })}</span>
+                  <span className="xs subtle">{t('{n} open listings', { n: counts[c.id] })}</span>
                 </div>
               </article>
             ))}
@@ -179,18 +181,26 @@ export default function Landing() {
               <span className="eyebrow">{t('Featured opportunities')}</span>
               <h2 id="feat-h">{t('A look at current projects')}</h2>
               <p>
-                {t('Example listings that show how opportunities are presented.')} <SampleBadge>{t('Sample data — not real listings')}</SampleBadge>
+                {t('The latest projects open for applications.')}
               </p>
             </div>
             <Button to="/opportunities" variant="secondary" iconRight="arrowRight">
               {t('View all opportunities')}
             </Button>
           </div>
-          <div className="job-grid two">
-            {featured.map((j) => (
-              <JobCard key={j.id} job={j} />
-            ))}
-          </div>
+          {featured.length ? (
+            <div className="job-grid two">
+              {featured.map((j) => (
+                <JobCard key={j.id} job={j} />
+              ))}
+            </div>
+          ) : (
+            <div className="card">
+              <EmptyState icon="briefcase" title={t('No opportunities yet')} actions={<Button to="/signup" variant="secondary">{t('Create an account')}</Button>}>
+                {t('New projects are published here soon. Create an account to be ready to apply.')}
+              </EmptyState>
+            </div>
+          )}
         </div>
       </section>
 
