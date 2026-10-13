@@ -5,6 +5,7 @@ import { arSA } from '@clerk/localizations';
 import { dark } from '@clerk/ui/themes';
 import { RouterProvider, navigate } from './lib/router';
 import { ClerkBridge, CLERK_ENABLED, CLERK_KEY } from './lib/auth';
+import { loadState } from './services/api';
 import { useLang } from './i18n';
 import { useTheme } from './lib/theme';
 import { ToastProvider } from './components/ui';
@@ -14,6 +15,9 @@ import './styles/base.css';
 import './styles/components.css';
 import './styles/layout.css';
 import './styles/pages.css';
+
+// Without Clerk there is no sign-in, but visitors can still browse published opportunities.
+if (!CLERK_ENABLED) loadState().catch(() => {});
 
 function Root() {
   const lang = useLang();

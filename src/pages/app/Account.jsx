@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { navigate } from '../../lib/router';
 import { useDocumentTitle, useQuery, useSession, useStore } from '../../lib/hooks';
-import { notifications as notesApi, profile as profileApi, profileCompletion } from '../../services/api';
+import { noteText, notifications as notesApi, profile as profileApi, profileCompletion } from '../../services/api';
 import { useOpenAccountSecurity, useSignOut } from '../../lib/auth';
 import { store } from '../../services/store';
 import { CATEGORIES, COUNTRIES, LANGUAGES, SKILLS, proficiencyLabel } from '../../data/constants';
@@ -341,8 +341,8 @@ export function Notifications() {
                 >
                   <span className="icon-tile sm steel"><Icon name={NOTE_ICON[n.type] || 'bell'} /></span>
                   <span className="grow">
-                    <span className="list-title">{t(n.title)}{!n.read && <span className="sr-only"> {t('(unread)')}</span>}</span>
-                    <span className="list-sub">{t(n.body)}</span>
+                    <span className="list-title">{noteText(n).title}{!n.read && <span className="sr-only"> {t('(unread)')}</span>}</span>
+                    <span className="list-sub">{noteText(n).body}</span>
                   </span>
                   <span className="xs subtle nowrap">{relative(n.at)}</span>
                   {!n.read && <span className="unread-dot" aria-hidden="true" />}

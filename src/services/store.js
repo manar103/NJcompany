@@ -1,10 +1,10 @@
-// Local store. Everything here lives in this browser's localStorage for now —
-// it stands in for the database and is replaced by real API calls once the backend exists.
-// The platform starts empty: admins create opportunities, contributors sign up through Clerk.
+// Client-side store: a cache of the server data (filled by api.loadState) plus per-device
+// drafts and preferences. Only `drafts` and `prefs` are saved in this browser.
 import { localizeJob } from '../data/localize';
 import { getLang } from '../i18n';
 
-const KEY = 'veralink.data.v3';
+const KEY = 'veralink.device.v1';
+const SAVED = ['drafts', 'prefs'];
 
 const initial = () => ({
   users: [],
@@ -16,6 +16,8 @@ const initial = () => ({
   drafts: {}, // assessment + workspace save-and-continue data, keyed by id
   announcements: [],
   prefs: {},
+  loaded: false, // true once GET /api/state has answered
+  loadError: null,
 });
 
 let state = load();
@@ -25,8 +27,8 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const { credentials, dev, ...saved } = JSON.parse(raw); // eslint-disable-line no-unused-vars -- dropped legacy keys
-      return { ...initial(), ...saved };
+      const saved = JSON.parse(raw);
+      return { ...initial(), ...Object.fromEntries(SAVED.map((k) => [k, saved[k] ?? initial()[k]])) };
     }
   } catch {
     /* storage unavailable — fall back to in-memory */
@@ -36,7 +38,7 @@ function load() {
 
 function persist() {
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(SAVED.map((k) => [k, state[k]]))));
   } catch {
     /* ignore quota / private mode */
   }
@@ -69,5 +71,3 @@ export const store = {
   },
 };
 
-export const uid = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
-export const today = () => new Date().toISOString().slice(0, 10);

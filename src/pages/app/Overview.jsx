@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from '../../lib/router';
 import { useDocumentTitle, useSession, useStore } from '../../lib/hooks';
-import { profileCompletion } from '../../services/api';
+import { noteText, profileCompletion } from '../../services/api';
 import { categoryById, STATUS_META } from '../../data/constants';
 import { daysUntil, fmtShort, relative } from '../../lib/format';
 import JobCard from '../../components/jobs/JobCard';
@@ -232,8 +232,8 @@ export default function Overview() {
                     <Link to={n.link || '/app/notifications'} className="list-row">
                       {!n.read && <span className="unread-dot" aria-label={t('Unread')} />}
                       <span className="grow">
-                        <span className="list-title">{t(n.title)}</span>
-                        <span className="list-sub">{t(n.body)}</span>
+                        <span className="list-title">{noteText(n).title}</span>
+                        <span className="list-sub">{noteText(n).body}</span>
                       </span>
                       <span className="xs subtle nowrap">{relative(n.at)}</span>
                     </Link>

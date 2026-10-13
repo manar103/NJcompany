@@ -27,10 +27,29 @@ Clerk handles sign-up, sign-in, email verification, password reset, social login
 
 A signed-in user gets the admin console (`/admin`) when either:
 
-- their email is listed in `VITE_ADMIN_EMAILS` in `.env` (comma-separated), or
+- their email is listed in `VITE_ADMIN_EMAILS` (comma-separated), or
 - in the Clerk dashboard → **Users** → the user → **Metadata**, their *public* metadata is `{ "role": "admin" }`.
 
-Everyone else is a contributor. The role check runs in the browser; once a real backend exists, enforce it on the server too (verify the Clerk session token and read the role from Clerk).
+The API decides the role on the server from Clerk's data, so a browser cannot make itself an admin.
+
+## Database and API (Neon + Vercel)
+
+Data is stored in **Neon Postgres**. The browser never talks to the database directly; it calls the API in `api/router.js`, which Vercel runs as a serverless function for every `/api/*` request (see `vercel.json`).
+
+- Tables are created automatically on the first API request (`api/_lib/db.js`).
+- Every request carries the Clerk session token; `api/_lib/auth.js` verifies it with `CLERK_SECRET_KEY` and loads the user. Admin routes check the role.
+- `npm run dev` serves the same API locally (a small Vite plugin in `vite.config.js`), using `DATABASE_URL` and `CLERK_SECRET_KEY` from `.env`.
+
+Environment variables (see `.env.example`):
+
+| Variable | Where | Purpose |
+| --- | --- | --- |
+| `VITE_CLERK_PUBLISHABLE_KEY` | browser | Clerk sign-in UI |
+| `VITE_ADMIN_EMAILS` | server | Emails that get the admin role |
+| `CLERK_SECRET_KEY` | server only | Verifies sessions in the API |
+| `DATABASE_URL` | server only | Neon connection string (added by Vercel's Neon integration) |
+
+Only assessment answers in progress, workspace drafts and notification/privacy preferences are kept in the browser.
 
 ## Language and theme
 
@@ -61,20 +80,20 @@ src/
   lib/           router (history router), auth (Clerk bridge), theme, hooks (useQuery, useStore, useSession), format helpers
 ```
 
-## Connecting a real backend
+## How screens use the API
 
-Screens only call the async functions in `src/services/api.js` (`jobs.list`, `applications.submit`, `assessments.submit`, `admin.decide`, …). To integrate a backend such as Django REST Framework, replace those functions with HTTP calls. Their names and data shapes match REST resources (`/jobs/`, `/applications/`, `/projects/`, `/notifications/`), and status keys like `under_review` match typical serializer choices. Components do not need to change.
+Screens only call the async functions in `src/services/api.js` (`jobs.list`, `applications.submit`, `assessments.submit`, `admin.decide`, …), which call the `/api` routes and refresh the local cache from `GET /api/state`.
 
-## What is real and what is simulated
+## What is real and what is not yet
 
-| Feature | In this prototype |
+| Feature | Status |
 | --- | --- |
 | Search, filters, sorting, tabs, dialogs, drawers, form validation | Real (client-side) |
 | Sign-up / log-in | Real, via Clerk |
 | Email verification, password reset | Real, via Clerk |
 | Contact form | Validated only; no message is sent yet |
-| Applications, drafts, withdrawals, admin decisions, notifications | Simulated in localStorage |
-| Assessment answers, save-and-continue | Saved locally, not scored |
+| Opportunities, applications, withdrawals, admin decisions, projects, notifications, announcements | Stored in Neon via the API |
+| Assessment answers | Saved on the device until submitted; not scored |
 | Microphone check and recording | Real browser recording; audio stays on the device, nothing is uploaded |
 | Transcription audio | Played with the browser's text-to-speech in place of project files |
 | Resume upload, photo collection | Not implemented: only the file name is kept, and the UI explains why |

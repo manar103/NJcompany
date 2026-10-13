@@ -1,79 +1,100 @@
-// API facade. Every screen talks to the "backend" through these async functions only,
-// so swapping the local store for real HTTP calls (e.g. a Django REST Framework service)
-// means re-implementing this file — components stay unchanged.
+// API facade. Screens talk to the backend only through these functions.
 //
-// Authentication is real (Clerk). Applications, assessments, submissions and admin actions
-// still run against the local store until a backend is connected.
-import { store, uid, today } from './store';
-import { STATUS_META, categoryById } from '../data/constants';
+// Data lives in Neon Postgres behind the /api functions (api/router.js). The local store is a
+// cache of what the server returned from GET /api/state: reads come from that cache, and every
+// write calls the server and then refreshes it. Only per-device drafts and preferences stay
+// in this browser.
+import { store } from './store';
+import { categoryById } from '../data/constants';
 import { t } from '../i18n';
-import { withJobDefaults } from '../data/jobs';
-
-const LATENCY = 450;
-const wait = (ms = LATENCY) => new Promise((r) => setTimeout(r, ms));
 
 export class ApiError extends Error {
-  constructor(message, field) {
+  constructor(message, status) {
     super(message);
-    this.field = field;
+    this.status = status;
   }
 }
 
-async function read(fn) {
-  await wait();
-  return fn(store.view());
+/* ---------------- HTTP ---------------- */
+let getToken = async () => null;
+/** lib/auth.jsx registers Clerk's getToken here so requests carry the session. */
+export function setTokenGetter(fn) {
+  getToken = fn || (async () => null);
 }
 
-async function write(fn, ms) {
-  await wait(ms);
-  let result;
-  store.set((s) => {
-    const out = fn(s);
-    result = out.result;
-    return out.state;
-  });
+async function http(method, path, body) {
+  const token = await getToken();
+  let res;
+  try {
+    res = await fetch(`/api${path}`, {
+      method,
+      headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new ApiError(t('Could not reach the server. Check your connection and try again.'), 0);
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(t(data.error || 'Something went wrong'), res.status);
+  return data;
+}
+
+/* ---------------- State cache ---------------- */
+let loading = null;
+/** Fetch everything the current user may see and replace the cached copy. */
+export function loadState() {
+  loading ??= http('GET', '/state')
+    .then((s) => {
+      store.set((prev) => ({ ...prev, ...s, users: s.users, sessionUserId: s.me?.id ?? null, loaded: true, loadError: null }));
+    })
+    .catch((err) => {
+      store.set((prev) => ({ ...prev, loaded: true, loadError: err.message }));
+      throw err;
+    })
+    .finally(() => {
+      loading = null;
+    });
+  return loading;
+}
+
+/** Run a server write, then refresh the cache so every screen sees the result. */
+async function mutate(method, path, body) {
+  const result = await http(method, path, body);
+  await loadState();
   return result;
 }
 
-const notify = (s, userId, n) => [{ id: uid('n'), userId, read: false, at: new Date().toISOString(), ...n }, ...s.notifications];
+async function read(fn) {
+  if (!store.get().loaded) await loadState().catch(() => {});
+  const s = store.view();
+  if (s.loadError) throw new ApiError(s.loadError);
+  return fn(s);
+}
 
 /* ---------------- Auth ---------------- */
 // Sign-up, sign-in, verification and passwords are handled by Clerk (see lib/auth.jsx).
-// These helpers only mirror the Clerk session into the local store.
 export const auth = {
   currentUser() {
     const s = store.get();
     return s.users.find((u) => u.id === s.sessionUserId) || null;
   },
-  /** Create or update the local record for a signed-in Clerk user and make it the session. */
-  syncExternalUser({ id, email, name, role }) {
-    store.set((s) => {
-      const existing = s.users.find((u) => u.id === id);
-      const base = existing || { id, createdAt: today(), onboarded: false, profile: { fullName: name, languages: [], skills: [], interests: [] } };
-      const user = {
-        ...base,
-        email,
-        role,
-        emailVerified: true,
-        onboarded: base.onboarded || role === 'admin',
-        profile: { ...base.profile, fullName: base.profile.fullName || name },
-      };
-      const users = existing ? s.users.map((u) => (u.id === id ? user : u)) : [...s.users, user];
-      return { ...s, users, sessionUserId: id };
-    });
+  /** After Clerk sign-in: create/refresh the user on the server (role is decided there). */
+  async sync() {
+    await http('POST', '/me/sync');
+    await loadState();
   },
-  clearSession() {
-    if (store.get().sessionUserId !== null) store.set((s) => ({ ...s, sessionUserId: null }));
+  /** After sign-out: drop the private data and reload what visitors can see. */
+  async clearSession() {
+    store.set((s) => ({ ...s, sessionUserId: null, users: [], applications: [], projects: [], notifications: [], announcements: [], loaded: false }));
+    await loadState().catch(() => {});
   },
 };
 
 /* ---------------- Profile ---------------- */
 export const profile = {
   async update(patch, extra = {}) {
-    return write((s) => {
-      const users = s.users.map((u) => (u.id === s.sessionUserId ? { ...u, ...extra, profile: { ...u.profile, ...patch } } : u));
-      return { state: { ...s, users }, result: users.find((u) => u.id === s.sessionUserId) };
-    }, 400);
+    await mutate('PATCH', '/me', { profile: patch, onboarded: extra.onboarded === true });
+    return auth.currentUser();
   },
 };
 
@@ -108,18 +129,10 @@ export const jobs = {
       if (!job) throw new ApiError(t('This opportunity could not be found. It may have been closed or removed.'));
       return job;
     }),
-  async save(job) {
-    return write((s) => {
-      const exists = s.jobs.some((j) => j.id === job.id);
-      const next = exists ? s.jobs.map((j) => (j.id === job.id ? withJobDefaults({ ...j, ...job }) : j)) : [withJobDefaults({ ...job, id: uid('vl'), postedAt: today() }), ...s.jobs];
-      return { state: { ...s, jobs: next }, result: true };
-    });
-  },
+  save: (job) => mutate('POST', '/jobs', { job }),
 };
 
 /* ---------------- Applications ---------------- */
-const withHistory = (a, status, note) => ({ ...a, status, updatedAt: today(), history: [...a.history, { status, at: today(), note }] });
-
 export const applications = {
   mine: () => read((s) => s.applications.filter((a) => a.userId === s.sessionUserId)),
   get: (id) =>
@@ -129,47 +142,21 @@ export const applications = {
       return a;
     }),
   async submit(jobId, answers, { draft = false } = {}) {
-    return write((s) => {
-      const job = s.jobs.find((j) => j.id === jobId);
-      const existing = s.applications.find((a) => a.jobId === jobId && a.userId === s.sessionUserId && a.status !== 'withdrawn');
-      if (existing && existing.status !== 'draft') throw new ApiError(t('You have already applied to this opportunity.'));
-      const needsAssessment = job.assessment?.required;
-      let app = existing || { id: uid('ap'), jobId, userId: s.sessionUserId, createdAt: today(), history: [], assessment: needsAssessment ? { status: 'not_started' } : null };
-      app = { ...app, answers };
-      if (draft) app = existing ? { ...app, updatedAt: today() } : withHistory(app, 'draft');
-      else {
-        app = withHistory(app, 'submitted');
-        if (needsAssessment) app = withHistory(app, 'assessment_required', t('Complete the {name}', { name: job.assessment.name }));
-      }
-      const others = s.applications.filter((a) => a.id !== app.id);
-      const notifications = draft
-        ? s.notifications
-        : notify(s, s.sessionUserId, { type: 'status', title: t('Application submitted'), body: t('Your application for “{title}” was submitted.', { title: t(job.title) }), link: `/app/applications/${app.id}` });
-      return { state: { ...s, applications: [app, ...others], notifications }, result: app };
-    }, 700);
+    const { id } = await mutate('POST', '/applications', { jobId, answers, draft });
+    return store.get().applications.find((a) => a.id === id);
   },
-  async withdraw(id) {
-    return write((s) => ({ state: { ...s, applications: s.applications.map((a) => (a.id === id ? withHistory(a, 'withdrawn', t('Withdrawn by you')) : a)) }, result: true }));
-  },
-  async discardDraft(id) {
-    return write((s) => ({ state: { ...s, applications: s.applications.filter((a) => a.id !== id) }, result: true }));
-  },
+  withdraw: (id) => mutate('POST', `/applications/${id}/withdraw`),
+  discardDraft: (id) => mutate('DELETE', `/applications/${id}`),
 };
 
 /* ---------------- Assessments ---------------- */
 export const assessments = {
+  // Answers in progress are kept on this device until the assessment is submitted.
   saveProgress(appId, data) {
     store.set((s) => ({ ...s, drafts: { ...s.drafts, [`assess:${appId}`]: { ...data, savedAt: new Date().toISOString() } } }));
   },
   loadProgress: (appId) => store.get().drafts[`assess:${appId}`] || null,
-  async submit(appId) {
-    return write((s) => {
-      const applicationsNext = s.applications.map((a) =>
-        a.id === appId ? withHistory({ ...a, assessment: { status: 'completed', completedAt: today() } }, 'under_review', t('Assessment completed')) : a
-      );
-      return { state: { ...s, applications: applicationsNext }, result: true };
-    }, 900);
-  },
+  submit: (appId) => mutate('POST', `/applications/${appId}/assessment`),
 };
 
 /* ---------------- Projects & workspace ---------------- */
@@ -182,61 +169,45 @@ export const projects = {
       return p;
     }),
   /** Records agreement acknowledgement and opens the workspace. */
-  async start(id) {
-    return write((s) => ({ state: { ...s, projects: s.projects.map((p) => (p.id === id ? { ...p, status: 'active', startedAt: today(), agreedAt: today() } : p)) }, result: true }));
-  },
+  start: (id) => mutate('POST', `/projects/${id}/start`),
   saveDraft(key, data) {
     store.set((s) => ({ ...s, drafts: { ...s.drafts, [`work:${key}`]: { ...data, savedAt: new Date().toISOString() } } }));
   },
   loadDraft: (key) => store.get().drafts[`work:${key}`] || null,
-  /** Marks a task done locally. In production this would POST the task output for review. */
   async completeTask(projectId, key) {
-    return write((s) => {
+    await mutate('POST', `/projects/${projectId}/complete-task`);
+    store.set((s) => {
       const drafts = { ...s.drafts };
       delete drafts[`work:${key}`];
-      const projectsNext = s.projects.map((p) => (p.id === projectId ? { ...p, status: 'active', startedAt: p.startedAt || today(), done: Math.min(p.total, p.done + 1) } : p));
-      return { state: { ...s, drafts, projects: projectsNext }, result: true };
-    }, 700);
+      return { ...s, drafts };
+    });
   },
 };
 
 /* ---------------- Notifications ---------------- */
+/** Notification text in the current language (server stores English templates + vars). */
+export function noteText(n) {
+  const vars = Object.fromEntries(Object.entries(n.vars || {}).map(([k, v]) => [k, typeof v === 'string' ? t(v) : v]));
+  return { title: t(n.title, vars), body: t(n.body, vars) };
+}
+
+const markLocal = (pred) => store.set((s) => ({ ...s, notifications: s.notifications.map((n) => (pred(n) ? { ...n, read: true } : n)) }));
+
 export const notifications = {
-  mine: () => read((s) => s.notifications.filter((n) => n.userId === s.sessionUserId || n.userId === '*').sort((a, b) => b.at.localeCompare(a.at))),
+  mine: () => read((s) => [...s.notifications].sort((a, b) => b.at.localeCompare(a.at))),
   markRead(id) {
-    store.set((s) => ({ ...s, notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) }));
+    markLocal((n) => n.id === id);
+    http('POST', `/notifications/${id}/read`).catch(() => {});
   },
   markAll() {
-    store.set((s) => ({ ...s, notifications: s.notifications.map((n) => (n.userId === s.sessionUserId || n.userId === '*' ? { ...n, read: true } : n)) }));
+    markLocal(() => true);
+    http('POST', '/notifications/read-all').catch(() => {});
   },
 };
 
-/* ---------------- Admin (simulated) ---------------- */
+/* ---------------- Admin ---------------- */
 export const admin = {
   allApplications: () => read((s) => s.applications),
-  async decide(appId, status, note) {
-    return write((s) => {
-      const app = s.applications.find((a) => a.id === appId);
-      const job = s.jobs.find((j) => j.id === app.jobId);
-      let projectsNext = s.projects;
-      if (status === 'accepted' && !s.projects.some((p) => p.applicationId === appId)) {
-        projectsNext = [...s.projects, { id: uid('pr'), applicationId: appId, jobId: app.jobId, userId: app.userId, status: 'not_started', done: 0, total: 20, startedAt: null, dueAt: job.deadline }];
-      }
-      return {
-        state: {
-          ...s,
-          projects: projectsNext,
-          applications: s.applications.map((a) => (a.id === appId ? withHistory(a, status, note) : a)),
-          notifications: notify(s, app.userId, { type: 'status', title: t('Application {status}', { status: t(STATUS_META[status].label).toLowerCase() }), body: `“${t(job.title)}”: ${note || t(STATUS_META[status].label)}`, link: `/app/applications/${appId}` }),
-        },
-        result: true,
-      };
-    });
-  },
-  async announce({ title, body }) {
-    return write((s) => ({
-      state: { ...s, announcements: [{ id: uid('an'), title, body, at: new Date().toISOString() }, ...s.announcements], notifications: notify(s, '*', { type: 'announcement', title, body, link: '/app/opportunities' }) },
-      result: true,
-    }));
-  },
+  decide: (appId, status, note) => mutate('POST', `/admin/applications/${appId}/decision`, { status, note }),
+  announce: ({ title, body }) => mutate('POST', '/announcements', { title, body }),
 };
